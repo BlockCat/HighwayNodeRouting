@@ -1,5 +1,7 @@
 # Dutch roadmap
 
+Implementation of Highway node routing. Using the Dutch road network as data.
+
 https://www.rijkswaterstaat.nl/apps/geoservices/geodata/dmc/weggeg/geogegevens/shapefile/
 https://www.rijkswaterstaat.nl/apps/geoservices/geodata/dmc/nwb-wegen/geogegevens/shapefile/Nederland_totaal/
 
