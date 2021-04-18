@@ -28,7 +28,7 @@ impl<'a> Drawable for PolyLineWrapper<'a> {
                 .map(|point| [point.x as f32, point.y as f32])
                 .collect::<Vec<[f32; 2]>>();
 
-            mb.line(&line, 20f32, Color::from_rgb(255, 20, 20))?;
+            mb.line(&line, 3f32, Color::from_rgb(255, 20, 20))?;
             for point in part {
                 mb.circle(
                     DrawMode::Fill(FillOptions::default()),

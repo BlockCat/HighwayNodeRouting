@@ -12,3 +12,6 @@ mint = "0.5"
 shapefile = "0.2.2"
 boundingbox = { path = "../boundingbox" }
 aabb-quadtree = "0.2.0"
+
+serde = "1.0.125"
+bincode = "1.3.3"

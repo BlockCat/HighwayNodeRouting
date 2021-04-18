@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use ggez::{
     event::{self, EventHandler, KeyCode, KeyMods},
@@ -9,6 +9,9 @@ use ggez::{
 use shapefile::{dbase::FieldValue, Error, Polyline, Shape};
 use visual::{camera, camera2::Camera};
 
+mod algorithm;
+mod network;
+mod preprocess;
 mod visual;
 
 struct MainState {
@@ -59,26 +62,40 @@ impl EventHandler for MainState {
     }
 }
 
-fn main() -> GameResult {
+fn main() {
+    // -> GameResult {
     println!("Hello, world!");
-    let mut shapes = read().unwrap();
+    // let mut shapes = read("data/Wegvakken/Wegvakken.shp").unwrap();
 
-    // shapes.truncate(10);
+    // // shapes.truncate(10);
 
-    let mut camera = Camera::new(1000, 1000, 10_000f32, 10_000f32);
-    camera.move_to([139199.0, 459748.0f32].into());
-    let mut state = MainState { shapes, camera };
+    // let mut camera = Camera::new(1000, 1000, 10_000f32, 10_000f32);
+    // camera.move_to([190895.0, 427154.0f32].into());
+    // let mut state = MainState { shapes, camera };
 
-    let cb = ggez::ContextBuilder::new("super_simple", "ggez")
-        .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
-    let (mut ctx, mut event_loop) = cb.build()?;
-    ggez::event::run(&mut ctx, &mut event_loop, &mut state)
+    // let cb = ggez::ContextBuilder::new("super_simple", "ggez")
+    //     .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
+    // let (mut ctx, mut event_loop) = cb.build()?;
+    // ggez::event::run(&mut ctx, &mut event_loop, &mut state)
+    let network = preprocess::preprocess().expect("could not create/laod network");
+    println!("Nodes: {}", network.nodes.len());
+    println!("Edges: {}", network.edges.len());
+    println!("Edges: {}", network.edges.iter().map(|x| x.len()).sum::<usize>());
+    println!("Total distance: {}", network.edges.iter().flat_map(|x| x.iter().map(|e| e.distance)).sum::<f32>());
+    // println!("{:?}",);
 }
 
-fn read() -> Result<Vec<Polyline>, Error> {
+fn read<P: AsRef<Path>>(path: P) -> Result<Vec<Polyline>, Error> {
     //Result<Vec<(Polyline, HashMap<String, FieldValue>)>, Error> {
-    let reader = shapefile::Reader::from_path("data/Wegvakken/Wegvakken.shp")?;
+    let reader = shapefile::Reader::from_path(path.as_ref())?;
     let iter = reader.iter_shapes_as::<Polyline>();
+
+    println!(
+        "{:?}",
+        shapefile::Reader::from_path(path.as_ref())?
+            .iter_shapes_and_records_as::<Polyline>()?
+            .next()
+    );
 
     iter.collect()
 }
