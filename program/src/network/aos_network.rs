@@ -1,6 +1,14 @@
-use super::{EdgeId, Network, NodeId};
+use super::{consts::*, utils::*, EdgeId, Network, NodeId, Writeable};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, error::Error, fs::File, io::Write, path::Path, str::FromStr};
+use shapefile::{reader::ShapeRecordIterator, Polyline};
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs::File,
+    io::{BufReader, Write},
+    path::Path,
+    str::FromStr,
+};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AoSNetwork {
     pub node_map: HashMap<usize, usize>,
@@ -67,6 +75,22 @@ impl Network for AoSNetwork {
         todo!()
     }
 }
+
+// impl Writeable for AoSNetwork {
+//     fn write<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
+//         let path: &Path = path.as_ref();
+//         let encoded = bincode::serialize(self)?;
+//         File::create(path)?.write_all(&encoded)?;
+//         Ok(())
+//     }
+
+//     fn read<P: AsRef<Path>>(path: P) -> Result<AoSNetwork, Box<dyn Error>> {
+//         let path: &Path = path.as_ref();
+//         let reader = File::open(path)?;
+//         let network: AoSNetwork = bincode::deserialize_from(reader)?;
+//         Ok(network)
+//     }
+// }
 
 impl AoSNetwork {
     pub fn new() -> Self {
@@ -135,42 +159,34 @@ impl AoSNetwork {
             }
         }
     }
-
-    pub fn write<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
-        let path: &Path = path.as_ref();
-        let encoded = bincode::serialize(self)?;
-        File::create(path)?.write_all(&encoded)?;
-        Ok(())
-    }
-
-    pub fn read<P: AsRef<Path>>(path: P) -> Result<AoSNetwork, Box<dyn Error>> {
-        let path: &Path = path.as_ref();
-        let reader = File::open(path)?;
-        let network: AoSNetwork = bincode::deserialize_from(reader)?;
-        Ok(network)
-    }
 }
 
-#[derive(Debug)]
-pub enum RoadDirection {
-    // Both (JTE_BEGIN <-> JTE_END) denoted with H
-    BOTH,
-    // Direction with flow: (JTE_BEGIN -> JTE_END) denoted with H
-    WITH,
-    // Direction against flow: (JTE_END -> JTE_BEGIN) denoted with T
-    AGAINST,
-}
+impl From<ShapeRecordIterator<BufReader<File>, Polyline>> for AoSNetwork {
+    fn from(shapes: ShapeRecordIterator<BufReader<File>, Polyline>) -> Self {
+        let mut network = AoSNetwork::new();
 
-impl FromStr for RoadDirection {
-    type Err = String;
+        for entry in shapes {
+            let (shape, record) = entry.unwrap();
+            let direction: RoadDirection =
+                get_character(&record, DIRECTION).unwrap().parse().unwrap();
+            let node_start = get_numeric(&record, NODE_START).unwrap() as usize;
+            let node_end = get_numeric(&record, NODE_END).unwrap() as usize;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "H" => Ok(RoadDirection::WITH),
-            "T" => Ok(RoadDirection::AGAINST),
-            "B" => Ok(RoadDirection::BOTH),
-            "O" => Ok(RoadDirection::BOTH), // O (Onbekend) means unknown but used as both directions.
-            _ => Err(s.into()),
+            let node_start = network.add_node(BuildNode {
+                junction_id: node_start,
+            });
+            let node_end = network.add_node(BuildNode {
+                junction_id: node_end,
+            });
+
+            network.add_edge(BuildEdge {
+                source_node: node_start,
+                target_node: node_end,
+                direction,
+                distance: calculate_distance(&shape),
+            });
         }
+
+        network
     }
 }

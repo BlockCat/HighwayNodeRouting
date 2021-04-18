@@ -6,6 +6,7 @@ use ggez::{
     nalgebra::Point2,
     Context, GameResult,
 };
+use network::{AoSNetwork, LiteNetwork, Network};
 use shapefile::{dbase::FieldValue, Error, Polyline, Shape};
 use visual::{camera, camera2::Camera};
 
@@ -77,11 +78,20 @@ fn main() {
     //     .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
     // let (mut ctx, mut event_loop) = cb.build()?;
     // ggez::event::run(&mut ctx, &mut event_loop, &mut state)
-    let network = preprocess::preprocess().expect("could not create/laod network");
-    println!("Nodes: {}", network.nodes.len());
-    println!("Edges: {}", network.edges.len());
-    println!("Edges: {}", network.edges.iter().map(|x| x.len()).sum::<usize>());
-    println!("Total distance: {}", network.edges.iter().flat_map(|x| x.iter().map(|e| e.distance)).sum::<f32>());
+    let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
+    println!("Nodes: {}", network.node_len());
+    println!("Edges: {}", network.edge_len());
+    // println!("Nodes: {}", network.nodes.len());
+    // println!("Edges: {}", network.edges.len());
+    
+    // println!(
+    //     "Total distance: {}",
+    //     network
+    //         .edges
+    //         .iter()
+    //         .flat_map(|x| x.iter().map(|e| e.distance))
+    //         .sum::<f32>()
+    // );
     // println!("{:?}",);
 }
 
