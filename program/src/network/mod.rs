@@ -6,7 +6,7 @@ pub mod utils;
 use std::{
     error::Error,
     fs::File,
-    io::{BufReader, Write},
+    io::{BufReader, Read, Write},
     ops::{Index, IndexMut},
     path::Path,
 };
@@ -47,8 +47,9 @@ where
 
     fn read<P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
         let path: &Path = path.as_ref();
-        let reader = File::open(path)?;
-        let network: T = bincode::deserialize_from(reader)?;
+        let mut buffer = Vec::new();
+        File::open(path)?.read_to_end(&mut buffer)?;
+        let network: T = bincode::deserialize(&buffer)?;
         Ok(network)
     }
 }
