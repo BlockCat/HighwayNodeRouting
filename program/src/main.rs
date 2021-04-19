@@ -1,12 +1,13 @@
 use std::{collections::HashMap, path::Path};
 
+use algorithm::{simple_a_star::SimpleAStar, Algorithm};
 use ggez::{
     event::{self, EventHandler, KeyCode, KeyMods},
     graphics::{self, MeshBuilder},
     nalgebra::Point2,
     Context, GameResult,
 };
-use network::{AoSNetwork, LiteNetwork, Network};
+use network::{AoSNetwork, LiteNetwork, Network, NodeCoord, NodeId};
 use shapefile::{dbase::FieldValue, Error, Polyline, Shape};
 use visual::{camera, camera2::Camera};
 
@@ -14,6 +15,15 @@ mod algorithm;
 mod network;
 mod preprocess;
 mod visual;
+
+const ZOETERMEER: NodeCoord = NodeCoord {
+    x: 91467.0,
+    y: 451279.0,
+};
+const UTRECHT: NodeCoord = NodeCoord {
+    x: 137410.0,
+    y: 452755.0,
+};
 
 struct MainState {
     // image: Image,
@@ -81,9 +91,34 @@ fn main() {
     let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
     println!("Nodes: {}", network.node_len());
     println!("Edges: {}", network.edge_len());
+
+    let zoetermeer = closest_node(&network, ZOETERMEER);
+    let utrecht = closest_node(&network, UTRECHT);
+
+    println!(
+        "Distance between Zoetermeer and Utrecht: {}",
+        network
+            .node_location(zoetermeer)
+            .distance(&network.node_location(utrecht))
+    );
     // println!("Nodes: {}", network.nodes.len());
     // println!("Edges: {}", network.edges.len());
-    
+
+    let algorithm = SimpleAStar::new(network);
+
+    if let Ok((_, path)) = algorithm.path(utrecht, zoetermeer) {
+        let distance = path
+            .iter()
+            .map(|x| algorithm.network().edge_distance(*x))
+            .sum::<f32>();
+        println!("Path found with {} edges", path.len());
+        println!("Path has a distance of: {}", distance);
+
+        println!("{:?}", path);
+    } else {
+        println!("No path found");
+    }
+
     // println!(
     //     "Total distance: {}",
     //     network
@@ -108,4 +143,22 @@ fn read<P: AsRef<Path>>(path: P) -> Result<Vec<Polyline>, Error> {
     );
 
     iter.collect()
+}
+
+fn closest_node<S: Network>(network: &S, coord: NodeCoord) -> NodeId {
+    (0..network.nodes_len())
+        .map(|x| NodeId(x))
+        .min_by_key(|x| Fwr(coord.distance_squared(&network.node_location(*x))))
+        .unwrap()
+}
+
+#[derive(Debug, PartialOrd, PartialEq)]
+struct Fwr(f32);
+
+impl Eq for Fwr {}
+
+impl Ord for Fwr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.partial_cmp(&other.0).unwrap()
+    }
 }

@@ -38,6 +38,11 @@ impl LiteNetwork {
 }
 
 impl Network for LiteNetwork {
+
+    fn nodes_len(&self) -> usize {
+        self.nodes.junctions.len()
+    }
+
     fn junction_id(&self, id: NodeId) -> usize {
         self.nodes.junctions[id]
     }

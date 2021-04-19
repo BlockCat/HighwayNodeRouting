@@ -17,6 +17,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use shapefile::{reader::ShapeRecordIterator, Polyline};
 
 pub trait Network: From<ShapeRecordIterator<BufReader<File>, Polyline>> {
+    fn nodes_len(&self) -> usize;
     fn junction_id(&self, id: NodeId) -> usize;
     fn outgoing_edges(&self, id: NodeId) -> &Vec<EdgeId>;
     fn incoming_edges(&self, id: NodeId) -> &Vec<EdgeId>;

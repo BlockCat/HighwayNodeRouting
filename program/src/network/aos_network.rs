@@ -43,6 +43,11 @@ pub struct BuildEdge {
 }
 
 impl Network for AoSNetwork {
+
+    fn nodes_len(&self) -> usize {
+        self.nodes.len()
+    }
+
     fn junction_id(&self, id: NodeId) -> usize {
         self.nodes[id].junction_id
     }
@@ -76,21 +81,6 @@ impl Network for AoSNetwork {
     }
 }
 
-// impl Writeable for AoSNetwork {
-//     fn write<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
-//         let path: &Path = path.as_ref();
-//         let encoded = bincode::serialize(self)?;
-//         File::create(path)?.write_all(&encoded)?;
-//         Ok(())
-//     }
-
-//     fn read<P: AsRef<Path>>(path: P) -> Result<AoSNetwork, Box<dyn Error>> {
-//         let path: &Path = path.as_ref();
-//         let reader = File::open(path)?;
-//         let network: AoSNetwork = bincode::deserialize_from(reader)?;
-//         Ok(network)
-//     }
-// }
 
 impl AoSNetwork {
     pub fn new() -> Self {

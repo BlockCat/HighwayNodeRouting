@@ -16,6 +16,10 @@ where
     pub fn new(network: A) -> Self {
         SimpleAStar { network }
     }
+
+    pub fn network(&self) -> &A {
+        &self.network
+    }
 }
 
 impl<A> Algorithm for SimpleAStar<A>
@@ -29,7 +33,7 @@ where
         &self,
         source: crate::network::NodeId,
         target: crate::network::NodeId,
-    ) -> (Self::Output, Vec<crate::network::EdgeId>) {
+    ) -> Result<(Self::Output, Vec<crate::network::EdgeId>), ()> {
         {
             let start_node = self.network.junction_id(source);
             let end_node = self.network.junction_id(source);
@@ -70,7 +74,7 @@ where
                     m = s;
                 }
                 edges.reverse();
-                return ((), edges);
+                return Ok(((), edges));
             }
 
             if !visited.insert(entry.node) {
@@ -109,7 +113,7 @@ where
             }
         }
 
-        ((), Vec::new())
+        Err(())
     }
 }
 
