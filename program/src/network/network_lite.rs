@@ -22,7 +22,7 @@ use std::{collections::HashMap, fs::File, io::BufReader};
 // - streetname
 // -
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LiteNetwork {
     nodes: NodeData,
     edges: EdgeData,
@@ -75,7 +75,7 @@ impl Network for LiteNetwork {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct NodeData {
     junctions: Vec<usize>,
     coordinate: Vec<NodeCoord>,
@@ -83,7 +83,7 @@ struct NodeData {
     incoming_edges: Vec<Vec<EdgeId>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct EdgeData {
     object_id: Vec<usize>,
     source: Vec<NodeId>,

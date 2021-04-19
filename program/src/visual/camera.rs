@@ -1,22 +1,36 @@
-use std::collections::HashMap;
-
-use crate::visual::PolyLineWrapper;
-use ggez::{filesystem::print_all, Context};
-use ggez::{graphics, GameResult};
-use graphics::DrawParam;
-use mint::Vector2;
-use shapefile::{dbase::FieldValue, Polyline, Shape};
+use std::collections::HashSet;
 
 use super::camera2::Camera;
-use super::camera2::CameraDraw;
+use crate::{
+    network::{EdgeId, LiteNetwork, Network},
+    visual::PolyLineWrapper,
+};
+use ggez::Context;
+use ggez::{graphics, GameResult};
+use shapefile::Polyline;
 
-pub fn draw(context: &mut Context, shapes: &Vec<(Polyline)>, camera: &Camera) -> GameResult<()> {
+pub fn draw(
+    context: &mut Context,
+    shapes: &Vec<Polyline>,
+    camera: &Camera,
+    path: &Vec<EdgeId>,
+    network: &LiteNetwork,
+) -> GameResult<()> {
     println!("s: {}", shapes.len());
     let r = camera.rect();
     let mut sum = 0usize;
 
-    for (shape) in shapes.iter() {
-        let poly = PolyLineWrapper::new(shape);
+    let path = path
+        .iter()
+        .map(|x| network.edge_object_id(*x))
+        .collect::<HashSet<_>>();
+
+    for (id, shape) in shapes.iter().enumerate() {
+        let poly = if path.contains(&id) {
+            PolyLineWrapper::new(shape, [0.0, 1.0, 0.0, 1.0].into(), 30.0)
+        } else {
+            PolyLineWrapper::new(shape, [1.0, 1.0, 1.0, 1.0].into(), 10.0)
+        };
 
         let d = poly
             .shape

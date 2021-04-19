@@ -1,6 +1,7 @@
 use crate::network::{
     consts::*, utils::*, AoSNetwork, BuildEdge, BuildNode, LiteNetwork, Network, Writeable,
 };
+use rusqlite::Connection;
 use shapefile::{reader::ShapeRecordIterator, Polyline};
 use std::{error::Error, fs::File, io::BufReader, path::Path};
 
@@ -13,12 +14,33 @@ where
     preprocess_network(input, output)
 }
 
+// fn preprocess_db<P>(input: P) -> Result<(), Box<dyn Error>>
+// where
+//     P: AsRef<Path>,
+// {
+//     let conn = Connection::open_in_memory()?;
+//     let mut shapes = read_shapes(input)?;
+
+//     conn.execute(
+//         "
+//         CREATE TABLE base_data (
+//             id INTEGER PRIMARY KEY,
+//             woonplaatsnaam VARCHAR,
+//             beginkilometrering NUMBER,
+//         )",
+//         [],
+//     )?;
+
+//     Ok(())
+// }
+
 fn preprocess_network<P, S>(input: P, output: P) -> Result<S, Box<dyn Error>>
 where
     P: AsRef<Path>,
     S: Writeable + Network,
 {
-    let shapes = read_shapes(input)?;
+    let mut shapes = read_shapes(input)?;
+
 
     if File::open(output.as_ref()).is_ok() {
         println!("Output exists, already preprocessed");

@@ -1,14 +1,13 @@
-use std::{collections::HashMap, path::Path};
-
 use algorithm::{simple_a_star::SimpleAStar, Algorithm};
 use ggez::{
     event::{self, EventHandler, KeyCode, KeyMods},
-    graphics::{self, MeshBuilder},
+    graphics::{self},
     nalgebra::Point2,
     Context, GameResult,
 };
-use network::{AoSNetwork, LiteNetwork, Network, NodeCoord, NodeId};
-use shapefile::{dbase::FieldValue, Error, Polyline, Shape};
+use network::{EdgeId, LiteNetwork, Network, NodeCoord, NodeId};
+use shapefile::{Error, Polyline};
+use std::path::Path;
 use visual::{camera, camera2::Camera};
 
 mod algorithm;
@@ -27,8 +26,10 @@ const UTRECHT: NodeCoord = NodeCoord {
 
 struct MainState {
     // image: Image,
-    shapes: Vec<(Polyline)>,
+    shapes: Vec<Polyline>,
     camera: Camera,
+    path: Vec<EdgeId>,
+    network: LiteNetwork,
 }
 
 impl EventHandler for MainState {
@@ -39,24 +40,14 @@ impl EventHandler for MainState {
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
 
-        camera::draw(ctx, &self.shapes, &self.camera)?;
-
-        let m = MeshBuilder::new()
-            .line(
-                &[[23199f32, 392248f32], [24199f32, 393248f32]],
-                2f32,
-                [0.0, 1.0, 0.0, 1.0].into(),
-            )?
-            .build(ctx)?;
-
-        graphics::draw(ctx, &m, self.camera.clone())?;
+        camera::draw(ctx, &self.shapes, &self.camera, &self.path, &self.network)?;
 
         graphics::present(ctx)
     }
 
     fn key_down_event(
         &mut self,
-        ctx: &mut Context,
+        _ctx: &mut Context,
         keycode: KeyCode,
         _keymods: KeyMods,
         _repeat: bool,
@@ -73,21 +64,9 @@ impl EventHandler for MainState {
     }
 }
 
-fn main() {
-    // -> GameResult {
+fn main() -> GameResult {
     println!("Hello, world!");
-    // let mut shapes = read("data/Wegvakken/Wegvakken.shp").unwrap();
 
-    // // shapes.truncate(10);
-
-    // let mut camera = Camera::new(1000, 1000, 10_000f32, 10_000f32);
-    // camera.move_to([190895.0, 427154.0f32].into());
-    // let mut state = MainState { shapes, camera };
-
-    // let cb = ggez::ContextBuilder::new("super_simple", "ggez")
-    //     .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
-    // let (mut ctx, mut event_loop) = cb.build()?;
-    // ggez::event::run(&mut ctx, &mut event_loop, &mut state)
     let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
     println!("Nodes: {}", network.node_len());
     println!("Edges: {}", network.edge_len());
@@ -104,9 +83,9 @@ fn main() {
     // println!("Nodes: {}", network.nodes.len());
     // println!("Edges: {}", network.edges.len());
 
-    let algorithm = SimpleAStar::new(network);
+    let algorithm = SimpleAStar::new(network.clone());
 
-    if let Ok((_, path)) = algorithm.path(utrecht, zoetermeer) {
+    let path = if let Ok((_, path)) = algorithm.path(utrecht, zoetermeer) {
         let distance = path
             .iter()
             .map(|x| algorithm.network().edge_distance(*x))
@@ -115,9 +94,29 @@ fn main() {
         println!("Path has a distance of: {}", distance);
 
         println!("{:?}", path);
+        path
     } else {
         println!("No path found");
-    }
+        Vec::new()
+    };
+
+    let shapes = read("data/Wegvakken/Wegvakken.shp").unwrap();
+
+    // shapes.truncate(10);
+
+    let mut camera = Camera::new(1000, 1000, 10_000f32, 10_000f32);
+    camera.move_to([93967.0, 459279.0].into());
+    let mut state = MainState {
+        shapes,
+        camera,
+        path,
+        network: network,
+    };
+
+    let cb = ggez::ContextBuilder::new("super_simple", "ggez")
+        .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
+    let (mut ctx, mut event_loop) = cb.build()?;
+    ggez::event::run(&mut ctx, &mut event_loop, &mut state)
 }
 
 fn read<P: AsRef<Path>>(path: P) -> Result<Vec<Polyline>, Error> {

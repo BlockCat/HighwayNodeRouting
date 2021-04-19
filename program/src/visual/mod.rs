@@ -7,12 +7,14 @@ pub mod camera2;
 #[derive(Debug)]
 pub struct PolyLineWrapper<'a> {
     shape: &'a Polyline,
+    color: Color,
+    width: f32,
     blend: Option<BlendMode>,
 }
 
 impl<'a> PolyLineWrapper<'a> {
-    pub fn new(shape: &'a Polyline) -> Self {
-        Self { shape, blend: None }
+    pub fn new(shape: &'a Polyline, color: Color, width: f32) -> Self {
+        Self { shape, blend: None, color, width }
     }
 }
 
@@ -28,8 +30,10 @@ impl<'a> Drawable for PolyLineWrapper<'a> {
                 .map(|point| [point.x as f32, point.y as f32])
                 .collect::<Vec<[f32; 2]>>();
 
-            mb.line(&line, 3f32, Color::from_rgb(255, 20, 20))?;
-            for point in part {
+            mb.line(&line, self.width, self.color)?;
+            let first = part.first().unwrap();
+            let last = part.last().unwrap();
+            for point in &[first, last] {
                 mb.circle(
                     DrawMode::Fill(FillOptions::default()),
                     [point.x as f32, point.y as f32],
