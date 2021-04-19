@@ -118,16 +118,6 @@ fn main() {
     } else {
         println!("No path found");
     }
-
-    // println!(
-    //     "Total distance: {}",
-    //     network
-    //         .edges
-    //         .iter()
-    //         .flat_map(|x| x.iter().map(|e| e.distance))
-    //         .sum::<f32>()
-    // );
-    // println!("{:?}",);
 }
 
 fn read<P: AsRef<Path>>(path: P) -> Result<Vec<Polyline>, Error> {

@@ -1,7 +1,7 @@
 use super::{EdgeId, Network, NodeCoord, NodeId};
 use crate::network::{consts::*, utils::*};
 use serde::{Deserialize, Serialize};
-use shapefile::{reader::ShapeRecordIterator, Polyline};
+use shapefile::{reader::ShapeRecordIterator, Point, Polyline};
 use std::{collections::HashMap, fs::File, io::BufReader};
 // Metadata is added.
 // Information in the network:
@@ -38,7 +38,6 @@ impl LiteNetwork {
 }
 
 impl Network for LiteNetwork {
-
     fn nodes_len(&self) -> usize {
         self.nodes.junctions.len()
     }
@@ -147,39 +146,18 @@ impl From<ShapeRecordIterator<BufReader<File>, Polyline>> for LiteNetwork {
             let junction_start = get_numeric(&record, NODE_START).unwrap() as usize;
             let junction_end = get_numeric(&record, NODE_END).unwrap() as usize;
 
-            let node_start_id = if let Some(id) = mapping.get(&junction_start) {
-                *id
-            } else {
-                assert!(shape.parts().len() == 1);
-                let p = shape.part(0).and_then(|x| x.first()).unwrap();
-                let id = network.add_node(
-                    junction_start,
-                    NodeCoord {
-                        x: p.x as f32,
-                        y: p.y as f32,
-                    },
-                );
-                mapping.insert(junction_start, id);
-                id
-            };
-            let node_end_id = if let Some(id) = mapping.get(&junction_end) {
-                *id
-            } else {
-                assert!(shape.parts().len() == 1);
-                let p = shape.part(0).and_then(|x| x.last()).unwrap();
-                let id = network.add_node(
-                    junction_end,
-                    NodeCoord {
-                        x: p.x as f32,
-                        y: p.y as f32,
-                    },
-                );
-                mapping.insert(junction_start, id);
-                id
-            };
-
-            let node_start_id = node_start_id;
-            let node_end_id = node_end_id;
+            let node_start_id = handle_node(
+                &mut network,
+                &mut mapping,
+                junction_start,
+                shape.part(0).and_then(|x| x.first()).unwrap(),
+            );
+            let node_end_id = handle_node(
+                &mut network,
+                &mut mapping,
+                junction_end,
+                shape.part(0).and_then(|x| x.last()).unwrap(),
+            );
 
             let shape_distance = calculate_distance(&shape);
 
@@ -213,6 +191,7 @@ impl From<ShapeRecordIterator<BufReader<File>, Polyline>> for LiteNetwork {
         }
 
         let nodes = &network.nodes;
+        assert_eq!(mapping.len(), nodes.junctions.len());
         assert_eq!(nodes.junctions.len(), nodes.outgoing_edges.len());
         assert_eq!(nodes.junctions.len(), nodes.incoming_edges.len());
         assert_eq!(nodes.junctions.len(), nodes.coordinate.len());
@@ -223,5 +202,26 @@ impl From<ShapeRecordIterator<BufReader<File>, Polyline>> for LiteNetwork {
         assert_eq!(edges.object_id.len(), edges.distance.len());
 
         network
+    }
+}
+
+fn handle_node(
+    network: &mut LiteNetwork,
+    mapping: &mut HashMap<usize, NodeId>,
+    junction_id: usize,
+    point: &Point,
+) -> NodeId {
+    if let Some(id) = mapping.get(&junction_id) {
+        *id
+    } else {
+        let id = network.add_node(
+            junction_id,
+            NodeCoord {
+                x: point.x as f32,
+                y: point.y as f32,
+            },
+        );
+        mapping.insert(junction_id, id);
+        id
     }
 }

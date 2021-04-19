@@ -1,6 +1,9 @@
 use super::Algorithm;
 use crate::network::{EdgeId, Network, NodeCoord, NodeId};
-use std::{cmp::Reverse, collections::{BinaryHeap, HashMap, HashSet}};
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap, HashSet},
+};
 
 pub struct SimpleAStar<A>
 where
@@ -36,7 +39,7 @@ where
     ) -> Result<(Self::Output, Vec<crate::network::EdgeId>), ()> {
         {
             let start_node = self.network.junction_id(source);
-            let end_node = self.network.junction_id(source);
+            let end_node = self.network.junction_id(target);
             let distance = self
                 .network
                 .node_location(source)
@@ -56,15 +59,15 @@ where
 
         let mut heap = BinaryHeap::new();
 
-        heap.push(Reverse(HeapEntry {
+        heap.push(HeapEntry {
             cost: heuristic(0f32, source_coord, target_coord),
             distance: 0f32,
             node: source,
-        }));
+        });
 
         let mut visited = HashSet::new();
 
-        while let Some(Reverse(entry)) = heap.pop() {
+        while let Some(entry) = heap.pop() {
             if entry.node == target {
                 let mut m = target;
                 let mut edges = Vec::new();
@@ -80,6 +83,8 @@ where
             if !visited.insert(entry.node) {
                 continue;
             }
+            // println!("--");
+            // println!("node: {:?}", entry);
 
             let children = self.network.outgoing_edges(entry.node);
             let distances = children
@@ -100,15 +105,20 @@ where
                 .zip(locations.into_iter())
                 .zip(distances.into_iter())
                 .zip(children.iter())
+                .filter(|(((node, _), _), _)| !visited.contains(node))
                 .map(|(((node, coords), distance), edge)| {
-                    (Reverse(HeapEntry {
-                        node,
-                        distance: entry.distance + distance,
-                        cost: heuristic(entry.distance + distance, coords, target_coord),
-                    }), *edge)
+                    (
+                        HeapEntry {
+                            node,
+                            distance: entry.distance + distance,
+                            cost: heuristic(entry.distance + distance, coords, target_coord),
+                        },
+                        *edge,
+                    )
                 })
             {
-                from.insert(child.0.node, Some(edge));
+                // println!("child: {:?}", child);
+                from.insert(child.node, Some(edge));
                 heap.push(child);
             }
         }
@@ -118,10 +128,11 @@ where
 }
 
 fn heuristic(cost: f32, source: NodeCoord, target: NodeCoord) -> f32 {
-    cost + source.distance(&target)
+    // cost + source.distance(&target)
+    -(cost + source.distance(&target))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct HeapEntry {
     cost: f32,
     distance: f32,
@@ -134,15 +145,4 @@ impl Ord for HeapEntry {
     }
 }
 
-impl PartialEq for HeapEntry {
-    fn eq(&self, other: &Self) -> bool {
-        self.distance == other.distance && self.node.0 == other.node.0 && self.cost == other.cost
-    }
-}
 impl Eq for HeapEntry {}
-
-impl PartialOrd for HeapEntry {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.cost.partial_cmp(&other.cost)
-    }
-}
