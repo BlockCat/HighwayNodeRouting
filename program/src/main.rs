@@ -104,7 +104,7 @@ fn main() -> GameResult {
 
     // shapes.truncate(10);
 
-    let mut camera = Camera::new(1000, 1000, 10_000f32, 10_000f32);
+    let mut camera = Camera::new(1000, 1000, 20_000f32, 20_000f32);
     camera.move_to([93967.0, 459279.0].into());
     let mut state = MainState {
         shapes,
