@@ -11,7 +11,7 @@ use std::{
     path::Path,
 };
 
-pub use aos_network::{AoSNetwork, BuildEdge, BuildNode, Edge, Node};
+// pub use aos_network::{AoSNetwork, BuildEdge, BuildNode, Edge, Node};
 pub use network_lite::LiteNetwork;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use shapefile::{reader::ShapeRecordIterator, Polyline};

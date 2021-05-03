@@ -1,9 +1,11 @@
-use super::Algorithm;
+
 use crate::network::{EdgeId, Network, NodeCoord, NodeId};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap, HashSet},
 };
+
+use super::PathAlgorithm;
 
 pub struct SimpleAStar<A>
 where
@@ -25,7 +27,7 @@ where
     }
 }
 
-impl<A> Algorithm for SimpleAStar<A>
+impl<A> PathAlgorithm for SimpleAStar<A>
 where
     A: Network,
 {
@@ -54,8 +56,8 @@ where
         let source_coord = self.network.node_location(source);
         let target_coord = self.network.node_location(target);
 
-        let mut from: HashMap<NodeId, Option<EdgeId>> = HashMap::new();
-        from.insert(source, None);
+        let mut from: HashMap<NodeId, (f32, Option<EdgeId>)> = HashMap::new();
+        from.insert(source, (0.0, None));
 
         let mut heap = BinaryHeap::new();
 
@@ -71,7 +73,7 @@ where
             if entry.node == target {
                 let mut m = target;
                 let mut edges = Vec::new();
-                while let Some(prev) = from[&m] {
+                while let (_, Some(prev)) = from[&m] {
                     edges.push(prev);
                     let s = self.network.edge_source(prev);
                     m = s;
@@ -83,6 +85,7 @@ where
             if !visited.insert(entry.node) {
                 continue;
             }
+
             // println!("--");
             // println!("node: {:?}", entry);
 
@@ -105,7 +108,6 @@ where
                 .zip(locations.into_iter())
                 .zip(distances.into_iter())
                 .zip(children.iter())
-                .filter(|(((node, _), _), _)| !visited.contains(node))
                 .map(|(((node, coords), distance), edge)| {
                     (
                         HeapEntry {
@@ -118,7 +120,15 @@ where
                 })
             {
                 // println!("child: {:?}", child);
-                from.insert(child.node, Some(edge));
+                let ndist = entry.distance + self.network.edge_distance(edge);
+                if let Some((d, x)) = from.get_mut(&child.node) {
+                    if ndist < *d {
+                        *d = ndist;
+                        *x = Some(edge);
+                    }
+                } else {
+                    from.insert(child.node, (ndist, Some(edge)));
+                }
                 heap.push(child);
             }
         }

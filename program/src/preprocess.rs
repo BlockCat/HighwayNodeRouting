@@ -1,7 +1,4 @@
-use crate::network::{
-    consts::*, utils::*, AoSNetwork, BuildEdge, BuildNode, LiteNetwork, Network, Writeable,
-};
-use rusqlite::Connection;
+use crate::network::{Network, Writeable};
 use shapefile::{reader::ShapeRecordIterator, Polyline};
 use std::{error::Error, fs::File, io::BufReader, path::Path};
 
@@ -40,7 +37,6 @@ where
     S: Writeable + Network,
 {
     let mut shapes = read_shapes(input)?;
-
 
     if File::open(output.as_ref()).is_ok() {
         println!("Output exists, already preprocessed");

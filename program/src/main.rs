@@ -1,4 +1,4 @@
-use algorithm::{simple_a_star::SimpleAStar, Algorithm};
+use algorithm::{simple_a_star::SimpleAStar, PathAlgorithm};
 use ggez::{
     event::{self, EventHandler, KeyCode, KeyMods},
     graphics::{self},
@@ -9,6 +9,8 @@ use network::{EdgeId, LiteNetwork, Network, NodeCoord, NodeId};
 use shapefile::{Error, Polyline};
 use std::path::Path;
 use visual::{camera, camera2::Camera};
+
+use crate::algorithm::ManyManyPathAlgorithm;
 
 mod algorithm;
 mod network;
@@ -22,6 +24,31 @@ const ZOETERMEER: NodeCoord = NodeCoord {
 const UTRECHT: NodeCoord = NodeCoord {
     x: 137410.0,
     y: 452755.0,
+};
+
+const UTRECHT_2: NodeCoord = NodeCoord {
+    x: 135644.0,
+    y: 456549.0,
+};
+
+const NEUDE: NodeCoord = NodeCoord {
+    x: 136482.0,
+    y: 456166.0,
+};
+
+const UITHOF: NodeCoord = NodeCoord {
+    x: 139791.0,
+    y: 455493.0,
+};
+
+const BERGEN: NodeCoord = NodeCoord {
+    x: 108286.0,
+    y: 520286.0,
+};
+
+const HOUTEN: NodeCoord = NodeCoord {
+    x: 139934.0,
+    y: 449810.0,
 };
 
 struct MainState {
@@ -64,28 +91,10 @@ impl EventHandler for MainState {
     }
 }
 
-fn main() -> GameResult {
-    println!("Hello, world!");
-
-    let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
-    println!("Nodes: {}", network.node_len());
-    println!("Edges: {}", network.edge_len());
-
-    let zoetermeer = closest_node(&network, ZOETERMEER);
-    let utrecht = closest_node(&network, UTRECHT);
-
-    println!(
-        "Distance between Zoetermeer and Utrecht: {}",
-        network
-            .node_location(zoetermeer)
-            .distance(&network.node_location(utrecht))
-    );
-    // println!("Nodes: {}", network.nodes.len());
-    // println!("Edges: {}", network.edges.len());
-
+fn visualise_path(node_a: NodeId, node_b: NodeId, network: LiteNetwork) -> GameResult {
     let algorithm = SimpleAStar::new(network.clone());
 
-    let path = if let Ok((_, path)) = algorithm.path(utrecht, zoetermeer) {
+    let path = if let Ok((_, path)) = algorithm.path(node_a, node_b) {
         let distance = path
             .iter()
             .map(|x| algorithm.network().edge_distance(*x))
@@ -117,6 +126,56 @@ fn main() -> GameResult {
         .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
     let (mut ctx, mut event_loop) = cb.build()?;
     ggez::event::run(&mut ctx, &mut event_loop, &mut state)
+}
+
+fn dijkstra_many_to_many(nodes: &[NodeId], network: LiteNetwork) {
+    let algorithm = algorithm::manymanydijkstra::ManyDijkstras::new(network);
+    println!("Searching {} paths", nodes.len() * (nodes.len() - 1));
+
+    let result = algorithm.path(nodes);
+
+    if let Ok(result) = result {
+        println!("Found {} paths", result.len());
+
+        for res in result {
+            let distance = res
+                .edges
+                .iter()
+                .map(|x| algorithm.network().edge_distance(*x))
+                .sum::<f32>();
+
+            println!("Distance: {}", distance);
+        }
+    } else {
+        println!("No paths found or some other error: {:?}", result);
+    }
+}
+fn main() {
+    let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
+    println!("Nodes: {}", network.node_len());
+    println!("Edges: {}", network.edge_len());
+
+    let zoetermeer = closest_node(&network, ZOETERMEER);
+    let utrecht = closest_node(&network, UTRECHT);
+    let utrecht_2 = closest_node(&network, UTRECHT_2);
+    let neude = closest_node(&network, NEUDE);
+    let uithof = closest_node(&network, UITHOF);
+    let bergen = closest_node(&network, BERGEN);
+    let houten = closest_node(&network, HOUTEN);
+    println!(
+        "Distance between Zoetermeer and Utrecht: {}",
+        network
+            .node_location(zoetermeer)
+            .distance(&network.node_location(utrecht))
+    );
+
+    // visualise_path(zoetermeer, utrecht, network).unwrap();
+    dijkstra_many_to_many(
+        &[
+            zoetermeer, utrecht, utrecht_2, neude, uithof, bergen, houten ,
+        ],
+        network,
+    );
 }
 
 fn read<P: AsRef<Path>>(path: P) -> Result<Vec<Polyline>, Error> {
