@@ -1,6 +1,7 @@
 use crate::network::{EdgeId, Network, NodeId};
 
-pub mod manymanydijkstra;
+pub mod dijkstra_bi_dir;
+pub mod dijkstra;
 pub mod simple_a_star;
 
 pub trait PathAlgorithm {
@@ -10,9 +11,11 @@ pub trait PathAlgorithm {
     fn path(&self, source: NodeId, target: NodeId) -> Result<(Self::Output, Vec<EdgeId>), ()>;
 }
 
-pub trait ManyManyPathAlgorithm {
+pub trait ManyToManyAlgorithm {
     type Network: Network;
 
+    fn new(network: Self::Network) -> Self;
+    fn network(&self) -> &Self::Network;
     fn path(&self, nodes: &[NodeId]) -> Result<Vec<EdgePath>, ManyManyErrors>;
 }
 

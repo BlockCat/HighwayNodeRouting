@@ -56,3 +56,21 @@ The search is started at these two points and will meet each other halfway at th
 
 A basic network needs to be created: Level 0.
 Then multiple layers need to be created: 
+
+
+
+## Current results
+
+```
+Run 1: 2.2795905s
+```
+```csv
+,zoetermeer,utrecht,utrecht_2,neude,uithof,bergen,houten,
+zoetermeer,,50946.45,50322.715,50111.44,53953.35,80725.05,54263.38,
+utrecht,51225.484,,5354.6606,4265.7026,4742.7646,84724.62,5600.5645,
+utrecht_2,50796.633,5060.5063,,1164.632,5332.3003,79986.664,9824.358,
+neude,50779.85,4255.081,1157.498,,4167.669,80964.22,8975.79,
+uithof,54777.03,4920.308,5369.535,4257.854,,85173.07,7696.2603,
+bergen,81383.22,84621.484,80177.72,81159.22,85326.86,,89780.49,
+houten,55107.62,5600.5654,9888.047,8799.086,7689.0938,89691.586,,
+```

@@ -1,4 +1,4 @@
-use algorithm::{simple_a_star::SimpleAStar, PathAlgorithm};
+use algorithm::{simple_a_star::SimpleAStar, EdgePath, PathAlgorithm};
 use ggez::{
     event::{self, EventHandler, KeyCode, KeyMods},
     graphics::{self},
@@ -7,10 +7,10 @@ use ggez::{
 };
 use network::{EdgeId, LiteNetwork, Network, NodeCoord, NodeId};
 use shapefile::{Error, Polyline};
-use std::path::Path;
+use std::{collections::HashMap, path::Path, time::SystemTime};
 use visual::{camera, camera2::Camera};
 
-use crate::algorithm::ManyManyPathAlgorithm;
+use crate::algorithm::{ManyToManyAlgorithm, dijkstra::DijkstraPathAlgorithm, dijkstra_bi_dir::BiDirDijkstraPathAlgorithm};
 
 mod algorithm;
 mod network;
@@ -128,16 +128,21 @@ fn visualise_path(node_a: NodeId, node_b: NodeId, network: LiteNetwork) -> GameR
     ggez::event::run(&mut ctx, &mut event_loop, &mut state)
 }
 
-fn dijkstra_many_to_many(nodes: &[NodeId], network: LiteNetwork) {
-    let algorithm = algorithm::manymanydijkstra::ManyDijkstras::new(network);
+fn dijkstra_many_to_many<T: ManyToManyAlgorithm<Network = LiteNetwork>>(nodes: &[NodeId], network: LiteNetwork) -> Vec<EdgePath> {
+    let algorithm = T::new(network);
+
     println!("Searching {} paths", nodes.len() * (nodes.len() - 1));
 
+    let start = SystemTime::now();
     let result = algorithm.path(nodes);
+    let end = SystemTime::now();
+
+    println!("Time: {:?}", end.duration_since(start));
 
     if let Ok(result) = result {
         println!("Found {} paths", result.len());
 
-        for res in result {
+        for res in &result {
             let distance = res
                 .edges
                 .iter()
@@ -146,8 +151,10 @@ fn dijkstra_many_to_many(nodes: &[NodeId], network: LiteNetwork) {
 
             println!("Distance: {}", distance);
         }
+        result
     } else {
         println!("No paths found or some other error: {:?}", result);
+        Vec::new()
     }
 }
 fn main() {
@@ -162,6 +169,16 @@ fn main() {
     let uithof = closest_node(&network, UITHOF);
     let bergen = closest_node(&network, BERGEN);
     let houten = closest_node(&network, HOUTEN);
+
+    let mut map = HashMap::new();
+    map.insert(zoetermeer, "zoetermeer");
+    map.insert(utrecht, "utrecht");
+    map.insert(utrecht_2, "utrecht_2");
+    map.insert(neude, "neude");
+    map.insert(uithof, "uithof");
+    map.insert(bergen, "bergen");
+    map.insert(houten, "houten");
+
     println!(
         "Distance between Zoetermeer and Utrecht: {}",
         network
@@ -170,12 +187,13 @@ fn main() {
     );
 
     // visualise_path(zoetermeer, utrecht, network).unwrap();
-    dijkstra_many_to_many(
-        &[
-            zoetermeer, utrecht, utrecht_2, neude, uithof, bergen, houten ,
-        ],
-        network,
-    );
+    let nodes = &[
+        zoetermeer, utrecht, utrecht_2, neude, uithof, bergen, houten,
+    ];
+    let res = dijkstra_many_to_many::<DijkstraPathAlgorithm>(nodes, network.clone());
+    print_csv(map.clone(), nodes, res, &network);
+    let res = dijkstra_many_to_many::<BiDirDijkstraPathAlgorithm>(nodes, network.clone());
+    print_csv(map, nodes, res, &network);
 }
 
 fn read<P: AsRef<Path>>(path: P) -> Result<Vec<Polyline>, Error> {
@@ -198,6 +216,44 @@ fn closest_node<S: Network>(network: &S, coord: NodeCoord) -> NodeId {
         .map(|x| NodeId(x))
         .min_by_key(|x| Fwr(coord.distance_squared(&network.node_location(*x))))
         .unwrap()
+}
+
+fn print_csv(
+    map: HashMap<NodeId, &str>,
+    nodes: &[NodeId],
+    paths: Vec<EdgePath>,
+    network: &LiteNetwork,
+) {
+    print!(",");
+    for n in 0..nodes.len() {
+        print!("{},", map[&nodes[n]]);
+    }
+
+    let mapping = paths
+        .iter()
+        .map(|x| {
+            (
+                (x.source, x.target),
+                x.edges
+                    .iter()
+                    .map(|x| network.edge_distance(*x))
+                    .sum::<f32>(),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+
+    println!();
+    for a in (0..nodes.len()).map(|x| nodes[x]) {
+        print!("{},", map[&a]);
+        for b in (0..nodes.len()).map(|x| nodes[x]) {
+            if a == b {
+                print!(",");
+            } else {
+                print!("{},", mapping[&(a, b)]);
+            }
+        }
+        println!();
+    }
 }
 
 #[derive(Debug, PartialOrd, PartialEq)]

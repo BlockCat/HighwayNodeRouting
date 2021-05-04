@@ -5,24 +5,22 @@ use std::{
 
 use crate::network::{EdgeId, LiteNetwork, Network, NodeId};
 
-use super::{EdgePath, ManyManyErrors, ManyManyPathAlgorithm};
+use super::{EdgePath, ManyManyErrors, ManyToManyAlgorithm};
 
-pub struct ManyDijkstras {
+pub struct DijkstraPathAlgorithm {
     network: LiteNetwork,
 }
 
-impl ManyDijkstras {
-    pub fn new(network: LiteNetwork) -> Self {
+impl ManyToManyAlgorithm for DijkstraPathAlgorithm {
+    type Network = LiteNetwork;
+
+    fn new(network: Self::Network) -> Self {
         Self { network }
     }
 
-    pub fn network(&self) -> &LiteNetwork {
+    fn network(&self) -> &Self::Network {
         &self.network
     }
-}
-
-impl ManyManyPathAlgorithm for ManyDijkstras {
-    type Network = LiteNetwork;
 
     fn path(
         &self,
@@ -36,10 +34,6 @@ impl ManyManyPathAlgorithm for ManyDijkstras {
             .iter()
             .map(|node| DijkstraIterator::new(&self.network, *node, DijkstraDirection::Forward))
             .collect::<Vec<_>>();
-        let mut backward_propagation = nodes
-            .iter()
-            .map(|node| DijkstraIterator::new(&self.network, *node, DijkstraDirection::Backward))
-            .collect::<Vec<_>>();
 
         let mut requests_pairs = HashSet::new();
 
@@ -52,72 +46,36 @@ impl ManyManyPathAlgorithm for ManyDijkstras {
         }
 
         let mut found_paths = Vec::new();
+        let mut nodes_evaluated = 0;
 
-        while !requests_pairs.is_empty() {
-            let mut iterator = forward_propagation.iter_mut();
-            let main = iterator.next().unwrap();
-            if let Some((cost, _)) = main.next() {
-                // println!("Cost: {}", cost);
-                for f in iterator {
-                    let l = f
-                        .by_ref()
-                        .take_while(|&(x, _)| x <= cost)
-                        // .inspect(|x| println!("{:?}", x))
-                        .count();
-                    // println!("forward: {}", l);
+        for i in 0..nodes.len() {
+            let node = &nodes[i];
+            let prop = &mut forward_propagation[i];
+            let mut set = nodes.iter().collect::<HashSet<_>>();
+            set.remove(node);
+            for x in prop.by_ref() {
+                if set.remove(&x.1) && set.is_empty() {
+                    break;
                 }
-                for f in &mut backward_propagation {
-                    let l = f
-                        .by_ref()
-                        // .inspect(|x| println!("{:?}", x))
-                        .take_while(|&(x, _)| x <= cost)
-                        .count();
-                    // println!("backward: {}", l);
+            }
+
+            println!("{:?}", node);
+
+            for j in 0..nodes.len() {
+                if i == j {
+                    continue;
                 }
 
-                let mut found = Vec::new();
-
-                for (i, j) in &requests_pairs {
-                    let forward = forward_propagation[*i].visited();
-                    let backward = backward_propagation[*j].visited();
-
-                    if let Some(l) = forward
-                        .keys()
-                        .filter(|x| backward.contains_key(*x))
-                        .min_by_key(|node| F32Wrapper(forward[node].0 + backward[node].0))
-                    {
-                        println!("found! {}", cost);
-                        found.push((*i, *j, *l));
-                    }
-                }
-
-                for (start, target, middle_node) in found {
-                    requests_pairs.remove(&(start, target));
-
-                    let mut part_1 = forward_propagation[start].rebuild(middle_node);
-                    let mut part_2 = backward_propagation[target].rebuild(middle_node);
-
-                    part_1.pop().unwrap();
-                    part_1.append(&mut part_2);
-
-                    println!(
-                        "distance: {}",
-                        part_1
-                            .iter()
-                            .map(|x| self.network.edge_distance(*x))
-                            .sum::<f32>()
-                    );
-
-                    found_paths.push(EdgePath {
-                        source: nodes[start],
-                        target: nodes[target],
-                        edges: part_1,
-                    })
-                }
+                found_paths.push(EdgePath {
+                    source: nodes[i],
+                    target: nodes[j],
+                    edges: prop.rebuild(nodes[j]),
+                });
             }
         }
 
         // All pairs should be found, excluding path to own.
+        println!("Nodes evaluated: {}", nodes_evaluated);
         if found_paths.len() == nodes.len() * (nodes.len() - 1) {
             Ok(found_paths)
         } else {
@@ -127,7 +85,7 @@ impl ManyManyPathAlgorithm for ManyDijkstras {
 }
 
 struct DijkstraIterator<'a, T: Network> {
-    visited: HashMap<NodeId, (f32, Option<EdgeId>)>, // The visited node id -> (the current cost, where it came from)
+    visited: HashMap<NodeId, (usize, Option<EdgeId>)>, // The visited node id -> (the current cost, where it came from)
     heap: BinaryHeap<Reverse<DijkstraIteratorEntry>>,
     direction: DijkstraDirection,
     network: &'a T,
@@ -139,9 +97,10 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
         let mut initial_map = HashMap::new();
         initial_heap.push(Reverse(DijkstraIteratorEntry {
             node: start,
-            cost: 0f32,
+            cost: 0,
+            edge: None,
         }));
-        initial_map.insert(start, (0f32, None));
+        // initial_map.insert(start, (0f32, None));
         DijkstraIterator {
             visited: initial_map,
             heap: initial_heap,
@@ -150,7 +109,11 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
         }
     }
 
-    pub fn visited(&self) -> &HashMap<NodeId, (f32, Option<EdgeId>)> {
+    fn peek_cost(&self) -> Option<usize> {
+        self.heap.peek().map(|x| x.0.cost)
+    }
+
+    pub fn visited(&self) -> &HashMap<NodeId, (usize, Option<EdgeId>)> {
         &self.visited
     }
 
@@ -162,10 +125,6 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
                 DijkstraDirection::Forward => self.network.edge_source(*prev),
                 DijkstraDirection::Backward => self.network.edge_target(*prev),
             };
-            println!(
-                "node: {:?}, edge: {:?}, dir: {:?}",
-                node, prev, self.direction
-            );
         }
 
         if let DijkstraDirection::Forward = self.direction {
@@ -177,29 +136,31 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
 }
 
 impl<'a, T: Network> Iterator for DijkstraIterator<'a, T> {
-    type Item = (f32, NodeId);
+    type Item = (usize, NodeId);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let entry = self.heap.pop()?.0;
+        let mut entry = self.heap.pop()?.0;
+        while let Some((prev_cost, _)) = self.visited.get(&entry.node) {
+            if entry.cost >= *prev_cost {
+                entry = self.heap.pop()?.0;
+            } else {
+                break;
+            }
+        }
+
+        self.visited.insert(entry.node, (entry.cost, entry.edge));
 
         for (neighbour, edge) in self.direction.neighbours(entry.node, self.network) {
-            let cost = entry.cost + self.network.edge_distance(edge);
+            let cost = entry.cost + self.network.edge_distance(edge) as usize;
             debug_assert!(cost >= entry.cost);
-
-            if let Some((prev_cost, _)) = self.visited.get(&neighbour) {
-                if cost >= *prev_cost {
-                    continue;
-                }
-            }
-            self.visited.insert(neighbour, (cost, Some(edge)));
 
             self.heap.push(Reverse(DijkstraIteratorEntry {
                 node: neighbour,
-                cost,
+                cost: cost,
+                edge: Some(edge),
             }));
         }
 
-        // println!("{:?}", self.heap);
         debug_assert!(
             self.heap.peek().unwrap().0.cost >= entry.cost,
             "{} > {}",
@@ -213,18 +174,24 @@ impl<'a, T: Network> Iterator for DijkstraIterator<'a, T> {
 #[derive(Debug, PartialEq)]
 struct DijkstraIteratorEntry {
     node: NodeId,
-    cost: f32,
+    cost: usize,
+    edge: Option<EdgeId>,
 }
 
 impl PartialOrd for DijkstraIteratorEntry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.cost.partial_cmp(&other.cost)
+        self.cost
+            .partial_cmp(&other.cost)
+            .map(|x| x.then(self.node.0.cmp(&other.node.0)))
     }
 }
 
 impl Ord for DijkstraIteratorEntry {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.cost.partial_cmp(&other.cost).unwrap()
+        self.cost
+            .partial_cmp(&other.cost)
+            .unwrap()
+            .then(self.node.0.cmp(&other.node.0))
     }
 }
 
@@ -253,13 +220,13 @@ impl DijkstraDirection {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
-struct F32Wrapper(f32);
+// #[derive(Debug, PartialEq, PartialOrd)]
+// struct F32Wrapper(f32);
 
-impl Ord for F32Wrapper {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.partial_cmp(&other.0).unwrap()
-    }
-}
+// impl Ord for F32Wrapper {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         self.0.partial_cmp(&other.0).unwrap()
+//     }
+// }
 
-impl Eq for F32Wrapper {}
+// impl Eq for F32Wrapper {}
