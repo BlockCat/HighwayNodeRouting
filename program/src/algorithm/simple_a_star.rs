@@ -1,9 +1,5 @@
-
 use crate::network::{EdgeId, Network, NodeCoord, NodeId};
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
-};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use super::PathAlgorithm;
 

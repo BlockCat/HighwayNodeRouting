@@ -4,6 +4,14 @@ pub mod dijkstra_bi_dir;
 pub mod dijkstra;
 pub mod simple_a_star;
 
+pub fn many_to_many_paths<S: Network, T: ManyToManyAlgorithm<Network = S>>(
+    nodes: &[NodeId],
+    network: S,
+) -> Result<Vec<EdgePath>, ManyManyErrors> {
+    let algorithm = T::new(network);
+    algorithm.path(nodes)
+}
+
 pub trait PathAlgorithm {
     type Network: Network;
     type Output;

@@ -142,7 +142,6 @@ struct DijkstraIterator<'a, T: Network> {
 impl<'a, T: Network> DijkstraIterator<'a, T> {
     pub fn new(network: &'a T, start: NodeId, direction: DijkstraDirection) -> Self {
         let mut initial_heap = BinaryHeap::new();
-        let mut initial_map = HashMap::new();
         initial_heap.push(Reverse(DijkstraIteratorEntry {
             node: start,
             cost: 0,
@@ -150,7 +149,7 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
         }));
         // initial_map.insert(start, (0f32, None));
         DijkstraIterator {
-            visited: initial_map,
+            visited: HashMap::new(),
             heap: initial_heap,
             direction,
             network,

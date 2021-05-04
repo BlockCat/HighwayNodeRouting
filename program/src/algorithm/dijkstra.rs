@@ -46,7 +46,6 @@ impl ManyToManyAlgorithm for DijkstraPathAlgorithm {
         }
 
         let mut found_paths = Vec::new();
-        let mut nodes_evaluated = 0;
 
         for i in 0..nodes.len() {
             let node = &nodes[i];
@@ -75,7 +74,6 @@ impl ManyToManyAlgorithm for DijkstraPathAlgorithm {
         }
 
         // All pairs should be found, excluding path to own.
-        println!("Nodes evaluated: {}", nodes_evaluated);
         if found_paths.len() == nodes.len() * (nodes.len() - 1) {
             Ok(found_paths)
         } else {
@@ -94,7 +92,7 @@ struct DijkstraIterator<'a, T: Network> {
 impl<'a, T: Network> DijkstraIterator<'a, T> {
     pub fn new(network: &'a T, start: NodeId, direction: DijkstraDirection) -> Self {
         let mut initial_heap = BinaryHeap::new();
-        let mut initial_map = HashMap::new();
+
         initial_heap.push(Reverse(DijkstraIteratorEntry {
             node: start,
             cost: 0,
@@ -102,19 +100,11 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
         }));
         // initial_map.insert(start, (0f32, None));
         DijkstraIterator {
-            visited: initial_map,
+            visited: HashMap::new(),
             heap: initial_heap,
             direction,
             network,
         }
-    }
-
-    fn peek_cost(&self) -> Option<usize> {
-        self.heap.peek().map(|x| x.0.cost)
-    }
-
-    pub fn visited(&self) -> &HashMap<NodeId, (usize, Option<EdgeId>)> {
-        &self.visited
     }
 
     pub fn rebuild(&self, mut node: NodeId) -> Vec<EdgeId> {
@@ -198,13 +188,13 @@ impl Ord for DijkstraIteratorEntry {
 impl Eq for DijkstraIteratorEntry {}
 
 #[derive(Debug)]
-enum DijkstraDirection {
+pub enum DijkstraDirection {
     Forward,
     Backward,
 }
 
 impl DijkstraDirection {
-    fn neighbours<T: Network>(&self, node: NodeId, network: &T) -> Vec<(NodeId, EdgeId)> {
+    pub fn neighbours<T: Network>(&self, node: NodeId, network: &T) -> Vec<(NodeId, EdgeId)> {
         match self {
             DijkstraDirection::Forward => network
                 .outgoing_edges(node)
@@ -219,14 +209,3 @@ impl DijkstraDirection {
         }
     }
 }
-
-// #[derive(Debug, PartialEq, PartialOrd)]
-// struct F32Wrapper(f32);
-
-// impl Ord for F32Wrapper {
-//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-//         self.0.partial_cmp(&other.0).unwrap()
-//     }
-// }
-
-// impl Eq for F32Wrapper {}

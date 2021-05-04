@@ -11,37 +11,17 @@ where
     preprocess_network(input, output)
 }
 
-// fn preprocess_db<P>(input: P) -> Result<(), Box<dyn Error>>
-// where
-//     P: AsRef<Path>,
-// {
-//     let conn = Connection::open_in_memory()?;
-//     let mut shapes = read_shapes(input)?;
-
-//     conn.execute(
-//         "
-//         CREATE TABLE base_data (
-//             id INTEGER PRIMARY KEY,
-//             woonplaatsnaam VARCHAR,
-//             beginkilometrering NUMBER,
-//         )",
-//         [],
-//     )?;
-
-//     Ok(())
-// }
-
 fn preprocess_network<P, S>(input: P, output: P) -> Result<S, Box<dyn Error>>
 where
     P: AsRef<Path>,
     S: Writeable + Network,
 {
-    let mut shapes = read_shapes(input)?;
-
     if File::open(output.as_ref()).is_ok() {
         println!("Output exists, already preprocessed");
         return S::read(output.as_ref());
     }
+
+    let shapes = read_shapes(input)?;
 
     println!("No output exists, creating preprocessed");
     let writeable: S = shapes.into();
