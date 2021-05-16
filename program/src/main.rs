@@ -1,8 +1,8 @@
+use network::{LiteNetwork, Network, NodeCoord, NodeId};
+use rand::{distributions::Uniform, prelude::StdRng, SeedableRng};
 use std::time::SystemTime;
 
-use algorithm::{dijkstra::{DijkstraDirection, DijkstraPathAlgorithm}, many_to_many_paths};
-use network::{LiteNetwork, Network, NodeCoord, NodeId};
-use rand::{SeedableRng, distributions::Uniform, prelude::StdRng};
+use crate::algorithm::{dijkstra::DijkstraPathAlgorithm, many_to_many_paths};
 
 mod algorithm;
 mod network;
@@ -11,6 +11,34 @@ mod preprocess;
 fn main() {
     let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
     let nodes = random_nodes(147, StdRng::seed_from_u64(1), &network);
+
+    let mut in2 = 0;
+    let mut out1 = 0;
+    let mut out2 = 0;
+
+    for n in 0..network.nodes_len() {
+        let o = network.outgoing_edges(NodeId(n)).len();
+        let i = network.incoming_edges(NodeId(n)).len();
+
+        if i == 1 && o == 2 {
+            out2 += 1;
+        }
+        if i == 1 && o == 1 {
+            out1 += 1;
+        }
+        if i == 2 && o == 1 {
+            in2 += 1;
+        }
+    }
+
+    println!("Total nodes: {}", network.nodes_len());
+    println!(
+        "Bypassable nodes: {}, [in2: {}, out1: {}, out2: {}]",
+        in2 + out1 + out2,
+        in2,
+        out1,
+        out2
+    );
 
     let start = SystemTime::now();
     many_to_many_paths::<LiteNetwork, DijkstraPathAlgorithm>(&nodes, network).unwrap();
@@ -93,8 +121,8 @@ mod play {
     };
 
     fn play() {
-        let network: LiteNetwork = preprocess::preprocess().expect("could not create/laod network");
-        println!("Nodes: {}", network.node_len());
+        let network: LiteNetwork = preprocess::preprocess().expect("could not create/load network");
+        println!("Nodes: {}", network.nodes_len());
         println!("Edges: {}", network.edge_len());
 
         let zoetermeer = closest_node(&network, ZOETERMEER);

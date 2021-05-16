@@ -1,14 +1,7 @@
-use super::{consts::*, utils::*, EdgeId, Network, NodeId, Writeable};
+use super::{consts::*, utils::*, EdgeId, Network, NodeId};
 use serde::{Deserialize, Serialize};
 use shapefile::{reader::ShapeRecordIterator, Polyline};
-use std::{
-    collections::HashMap,
-    error::Error,
-    fs::File,
-    io::{BufReader, Write},
-    path::Path,
-    str::FromStr,
-};
+use std::{collections::HashMap, fs::File, io::BufReader};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AoSNetwork {
     pub node_map: HashMap<usize, usize>,
@@ -43,7 +36,6 @@ pub struct BuildEdge {
 }
 
 impl Network for AoSNetwork {
-
     fn nodes_len(&self) -> usize {
         self.nodes.len()
     }
@@ -52,35 +44,34 @@ impl Network for AoSNetwork {
         self.nodes[id].junction_id
     }
 
-    fn outgoing_edges(&self, id: NodeId) -> &Vec<EdgeId> {
+    fn outgoing_edges(&self, _id: NodeId) -> &Vec<EdgeId> {
         todo!()
     }
 
-    fn incoming_edges(&self, id: NodeId) -> &Vec<EdgeId> {
+    fn incoming_edges(&self, _id: NodeId) -> &Vec<EdgeId> {
         todo!()
     }
 
-    fn edge_source(&self, id: EdgeId) -> NodeId {
+    fn edge_source(&self, _id: EdgeId) -> NodeId {
         todo!()
     }
 
-    fn edge_target(&self, id: EdgeId) -> NodeId {
+    fn edge_target(&self, _id: EdgeId) -> NodeId {
         todo!()
     }
 
-    fn edge_object_id(&self, id: EdgeId) -> usize {
+    fn edge_object_id(&self, _id: EdgeId) -> usize {
         todo!()
     }
 
-    fn edge_distance(&self, id: EdgeId) -> f32 {
+    fn edge_distance(&self, _id: EdgeId) -> f32 {
         todo!()
     }
 
-    fn node_location(&self, id: NodeId) -> super::NodeCoord {
+    fn node_location(&self, _id: NodeId) -> super::NodeCoord {
         todo!()
     }
 }
-
 
 impl AoSNetwork {
     pub fn new() -> Self {

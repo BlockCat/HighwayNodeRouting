@@ -10,6 +10,7 @@ where
     network: A,
 }
 
+#[allow(dead_code)]
 impl<A> SimpleAStar<A>
 where
     A: Network,

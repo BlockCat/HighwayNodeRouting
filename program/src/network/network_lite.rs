@@ -28,10 +28,7 @@ pub struct LiteNetwork {
     edges: EdgeData,
 }
 
-impl LiteNetwork {
-    pub fn node_len(&self) -> usize {
-        self.nodes.junctions.len()
-    }
+impl LiteNetwork {    
     pub fn edge_len(&self) -> usize {
         self.edges.object_id.len()
     }

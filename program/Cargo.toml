@@ -9,8 +9,8 @@ edition = "2018"
 [dependencies]
 mint = "0.5"
 shapefile = "0.2.2"
-boundingbox = { path = "../boundingbox" }
 serde = { version = "1.0.125", features = ["derive"] }
 bincode = "1.3.3"
 rand = "0.8.3"
 kdtree = "0.6.0"
+rayon = "1.5.0"

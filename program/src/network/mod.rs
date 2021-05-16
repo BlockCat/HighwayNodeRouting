@@ -3,6 +3,10 @@ pub mod consts;
 pub mod network_lite;
 pub mod utils;
 
+use crate::algorithm::dijkstra::DijkstraIterator;
+pub use network_lite::LiteNetwork;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use shapefile::{reader::ShapeRecordIterator, Polyline};
 use std::{
     error::Error,
     fs::File,
@@ -10,11 +14,6 @@ use std::{
     ops::{Index, IndexMut},
     path::Path,
 };
-
-// pub use aos_network::{AoSNetwork, BuildEdge, BuildNode, Edge, Node};
-pub use network_lite::LiteNetwork;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use shapefile::{reader::ShapeRecordIterator, Polyline};
 
 pub trait Network: From<ShapeRecordIterator<BufReader<File>, Polyline>> {
     fn nodes_len(&self) -> usize;
@@ -27,6 +26,34 @@ pub trait Network: From<ShapeRecordIterator<BufReader<File>, Polyline>> {
     fn edge_target(&self, id: EdgeId) -> NodeId;
     fn edge_object_id(&self, id: EdgeId) -> usize;
     fn edge_distance(&self, id: EdgeId) -> f32;
+
+    fn forward_dijkstra(&self, start: NodeId) -> DijkstraIterator<Self> {
+        DijkstraIterator::new(
+            self,
+            start,
+            crate::algorithm::dijkstra::DijkstraDirection::Forward,
+        )
+    }
+
+    fn forward_radius_neighbourhood(&self, start: NodeId, radius: usize) -> Vec<(usize, NodeId)> {
+        self.forward_dijkstra(start)
+            .take_while(|(cost, _)| cost <= &radius)
+            .collect()
+    }
+
+    fn backward_dijkstra(&self, start: NodeId) -> DijkstraIterator<Self> {
+        DijkstraIterator::new(
+            self,
+            start,
+            crate::algorithm::dijkstra::DijkstraDirection::Backward,
+        )
+    }
+
+    fn backward_radius_neighbourhood(&self, start: NodeId, radius: usize) -> Vec<(usize, NodeId)> {
+        self.backward_dijkstra(start)
+            .take_while(|(cost, _)| cost <= &radius)
+            .collect()
+    }
 }
 
 pub trait Writeable: Sized {

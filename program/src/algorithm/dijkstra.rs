@@ -3,6 +3,8 @@ use std::{
     collections::{BinaryHeap, HashMap, HashSet},
 };
 
+use rayon::prelude::*;
+
 use crate::network::{EdgeId, LiteNetwork, Network, NodeId};
 
 use super::{EdgePath, ManyManyErrors, ManyToManyAlgorithm};
@@ -30,11 +32,6 @@ impl ManyToManyAlgorithm for DijkstraPathAlgorithm {
             return Err(ManyManyErrors::EmptyNodeList);
         }
 
-        let mut forward_propagation = nodes
-            .iter()
-            .map(|node| DijkstraIterator::new(&self.network, *node, DijkstraDirection::Forward))
-            .collect::<Vec<_>>();
-
         let mut requests_pairs = HashSet::new();
 
         for i in 0..nodes.len() {
@@ -45,33 +42,41 @@ impl ManyToManyAlgorithm for DijkstraPathAlgorithm {
             }
         }
 
-        let mut found_paths = Vec::new();
-
-        for i in 0..nodes.len() {
-            let node = &nodes[i];
-            let prop = &mut forward_propagation[i];
-            let mut set = nodes.iter().collect::<HashSet<_>>();
-            set.remove(node);
-            for x in prop.by_ref() {
-                if set.remove(&x.1) && set.is_empty() {
-                    break;
-                }
-            }
-
-            println!("{:?}", node);
-
-            for j in 0..nodes.len() {
-                if i == j {
-                    continue;
+        let found_paths = (0..nodes.len())
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .map(|i| {
+                let node = &nodes[i];
+                let mut prop =
+                    DijkstraIterator::new(&self.network, *node, DijkstraDirection::Forward);
+                let mut set = nodes.iter().collect::<HashSet<_>>();
+                set.remove(node);
+                for x in prop.by_ref() {
+                    if set.remove(&x.1) && set.is_empty() {
+                        break;
+                    }
                 }
 
-                found_paths.push(EdgePath {
-                    source: nodes[i],
-                    target: nodes[j],
-                    edges: prop.rebuild(nodes[j]),
-                });
-            }
-        }
+                println!("{:?}", node);
+
+                let mut found_paths = Vec::new();
+
+                for j in 0..nodes.len() {
+                    if i == j {
+                        continue;
+                    }
+
+                    found_paths.push(EdgePath {
+                        source: nodes[i],
+                        target: nodes[j],
+                        edges: prop.rebuild(nodes[j]),
+                    });
+                }
+
+                found_paths
+            })
+            .flat_map_iter(|x| x.into_iter())
+            .collect::<Vec<_>>();
 
         // All pairs should be found, excluding path to own.
         if found_paths.len() == nodes.len() * (nodes.len() - 1) {
@@ -82,7 +87,7 @@ impl ManyToManyAlgorithm for DijkstraPathAlgorithm {
     }
 }
 
-struct DijkstraIterator<'a, T: Network> {
+pub struct DijkstraIterator<'a, T: Network> {
     visited: HashMap<NodeId, (usize, Option<EdgeId>)>, // The visited node id -> (the current cost, where it came from)
     heap: BinaryHeap<Reverse<DijkstraIteratorEntry>>,
     direction: DijkstraDirection,
@@ -122,6 +127,14 @@ impl<'a, T: Network> DijkstraIterator<'a, T> {
         }
 
         return edges;
+    }
+
+    pub fn peek_cost(&self) -> Option<usize> {
+        self.heap.peek().map(|x| x.0.cost)
+    }
+
+    pub fn visited(&self) -> &HashMap<NodeId, (usize, Option<EdgeId>)> {
+        &self.visited
     }
 }
 
